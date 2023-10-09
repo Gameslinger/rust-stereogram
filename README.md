@@ -1,5 +1,5 @@
 # Rust Stereogram Generator
-!(An autostereogram of a shark)[stereogram.png]
+![An autostereogram of a shark](stereogram.png)
 I think sterograms are underrated. It is amazing how our eyes can infer depth from a picture of static. I decided to write this random-dot autostereogram generator for fun and to learn rust. I attached some depth maps I found online. I hope this weekend project can spark an interest in stereograms and rust!
 
 ## Explanation
