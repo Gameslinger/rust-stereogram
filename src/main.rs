@@ -2,10 +2,10 @@ use image::{Rgb, RgbImage};
 use rand::{thread_rng, Rng};
 use std::env;
 
-//Usage: [out width] [out height] [pattern_width] [shift_amplitude] [depthmap]
+//Usage: [out width] [out height] [pattern_width] [shift_amplitude] [depthmap] [output name]
 fn main() {
     let args: Vec<String> = env::args().collect();
-    if args.len() != 6 {
+    if args.len() != 7 {
         panic!("Invalid parameters!");
     }
     let image_width: u32 = args[1].trim().parse().expect("Invalid image width");
@@ -78,5 +78,5 @@ fn main() {
         }
     }
     //Save image
-    out_image.save("stereogram.png").unwrap();
+    out_image.save(args[6].trim()).unwrap();
 }
