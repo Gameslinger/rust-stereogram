@@ -1,21 +1,27 @@
 use clap::Parser;
 use image::{Rgb, RgbImage};
 use rand::{thread_rng, Rng};
+use std::path::PathBuf;
 
+// CLI arguments
 #[derive(clap::Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
     /// Image file name that represent depth distribution
-    #[arg(short, long)]
-    depth_source_image_file: String,
+    #[arg(short, long, value_names = ["IMAGE_FILENAME"], required = true )]
+    depth_file: String,
+ 
+    /// Stereogram output image file name
+    #[arg(short, long, value_names = ["OUTPUT_FILENAME"], required = true )]
+    out_image: String,
 
     /// Size of repeating dots pattern square (in pixels)
     #[arg(short, long, default_value_t = 40)]
     pattern_size: u32,
 
-    /// Distortion to represent depth. 0.1 - flatest, 0.9 - deepest
-    #[arg(short, long, default_value_t = 0.6)]
-    shift_amplitude: f64,
+    /// Pattern distortion to represent depth. [0.1 - 0.9]
+    #[arg(short('D'), long, default_value_t = 0.6)]
+    deepness: f64,
 
     /// Width of outer image (in pixels)
     #[arg(short('W'), long)]
@@ -24,22 +30,20 @@ struct Args {
     /// Height of outer image (in pixels)
     #[arg(short('H'), long)]
     height: Option<u32>,
-
-    /// Stereogram output image file name
-    #[arg(short, long)]
-    out_image_file: String,
 }
 
 fn main() {
     let args: Args = Args::parse();
 
-    let depthmap = image::open(args.depth_source_image_file.trim())
+    let depth_file_path = PathBuf::from( args.depth_file );
+    let depthmap = image::open(depth_file_path)
         .expect("Unable to open depth map!")
         .to_luma8();
+
     let image_width: u32 = args.width.unwrap_or(depthmap.width());
     let image_height: u32 = args.height.unwrap_or(depthmap.height());
     let pix_width: u32 = args.pattern_size;
-    let shift_amplitude: f64 = args.shift_amplitude;
+    let shift_amplitude: f64 = args.deepness;
     //Generate random pixels
     let mut src_buf: Vec<Vec<f64>> = vec![vec![0.0; pix_width as usize]; image_height as usize];
     let mut rng = thread_rng();
@@ -93,6 +97,6 @@ fn main() {
     }
     //Save image
     out_image
-        .save(args.out_image_file)
+        .save(args.out_image)
         .expect("Can't save output file");
 }
