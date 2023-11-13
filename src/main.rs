@@ -1,23 +1,49 @@
+use clap::Parser;
 use image::{Rgb, RgbImage};
 use rand::{thread_rng, Rng};
-use std::env;
+use std::path::PathBuf;
 
-//Usage: [out width] [out height] [pattern_width] [shift_amplitude] [depthmap] [output name]
+// CLI arguments
+#[derive(clap::Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    /// Image file name that represent depth distribution
+    #[arg(short, long, value_names = ["IMAGE_FILENAME"], required = true )]
+    depth_file: String,
+
+    /// Stereogram file name [default: --depth-file=bulgy.jpg => bulgy-stereogram.jpg]
+    #[arg(short, long, value_names = ["OUTPUT_FILENAME"])]
+    out_image: Option<String>,
+
+    /// Size of repeating dots pattern square (in pixels)
+    #[arg(short, long, default_value_t = 40)]
+    pattern_size: u32,
+
+    /// Pattern distortion to represent depth. [0.1 - 0.9]
+    #[arg(short('D'), long, default_value_t = 0.6)]
+    deepness: f64,
+
+    /// Width of outer image (in pixels)
+    #[arg(short('W'), long)]
+    width: Option<u32>,
+
+    /// Height of outer image (in pixels)
+    #[arg(short('H'), long)]
+    height: Option<u32>,
+}
+
 fn main() {
-    let args: Vec<String> = env::args().collect();
-    if args.len() != 7 {
-        panic!("Invalid parameters!");
-    }
-    let image_width: u32 = args[1].trim().parse().expect("Invalid image width");
-    let image_height: u32 = args[2].trim().parse().expect("Invalid image height");
-    let pix_width: u32 = args[3].trim().parse().expect("Invalid pattern width");
-    let shift_amplitude: f64 = args[4]
-        .trim()
-        .parse()
-        .expect("Invalid shift shift_amplitude");
-    let depthmap = image::open(args[5].trim())
+    let args: Args = Args::parse();
+
+    let depth_file_path = PathBuf::from(args.depth_file);
+    let depthmap = image::open(depth_file_path.clone())
         .expect("Unable to open depth map!")
         .to_luma8();
+
+    let image_width: u32 = args.width.unwrap_or(depthmap.width());
+    let image_height: u32 = args.height.unwrap_or(depthmap.height());
+    let pix_width: u32 = args.pattern_size;
+    let shift_amplitude: f64 = args.deepness;
     //Generate random pixels
     let mut src_buf: Vec<Vec<f64>> = vec![vec![0.0; pix_width as usize]; image_height as usize];
     let mut rng = thread_rng();
@@ -53,16 +79,8 @@ fn main() {
                     (src_buf[(r % pix_width) as usize][(c % pix_width) as usize] * 255.) as u8;
                 out_image.put_pixel(c, r, Rgb([intensity, intensity, intensity]));
             } else {
-                let min_width = if out_image.width() < depthmap.width() {
-                    out_image.width()
-                } else {
-                    depthmap.width()
-                };
-                let min_height = if out_image.height() < depthmap.height() {
-                    out_image.height()
-                } else {
-                    depthmap.height()
-                };
+                let min_width = out_image.width().min(depthmap.width());
+                let min_height = out_image.height().min(depthmap.height());
                 let intensity = (((depthmap.get_pixel(c % min_width, r % min_height))[0] as f64)
                     - darkest)
                     / (brightest - darkest);
@@ -77,6 +95,19 @@ fn main() {
             }
         }
     }
+
+    // Use special lambda in case if --out argument wasn't specified
+    let get_default_output = |in_path: PathBuf| -> String {
+        let in_stem = in_path.file_stem().unwrap().to_str().unwrap();
+        let in_ext = in_path.extension().unwrap().to_str().unwrap();
+        let out_path = in_path.with_file_name(format!("{}-stereogram.{}", in_stem, in_ext));
+        out_path.to_string_lossy().to_string()
+    };
     //Save image
-    out_image.save(args[6].trim()).unwrap();
+    out_image
+        .save(
+            args.out_image
+                .unwrap_or(get_default_output(depth_file_path)),
+        )
+        .expect("Can't save output file");
 }

@@ -13,10 +13,24 @@ The algorithm for this program is based off of the code found [here](https://flo
 # Building
 cargo b -r
 mv target/release/autostereogram .
-# Usage:
-./autostereogram [out width] [out height] [pattern_width] [shift_amplitude] [depthmap] [output name]
 
 # Examples
-./autostereogram 600 400 40 0.6 shark.png shark-stereogram.png
-./autostereogram 600 600 40 0.6 elephant.png elephant-stereogram.png
+./autostereogram --depth-file=shark.png --out-image=shark-stereogram.png --width=600 --height=400 --pattern-size=40 --deepness=0.6 
+./autostereogram -d elephant.png
+```
+### Usage
+
+Only parameter --depth-file (-d) is required. Other options uses hardcoded values or calculated from input depth image.
+```
+Usage: autostereogram.exe [OPTIONS] --depth-file <IMAGE_FILENAME>
+
+Options:
+  -d, --depth-file <IMAGE_FILENAME>  Image file name that represent depth distribution
+  -o, --out-image <OUTPUT_FILENAME>  Stereogram file name [default: --depth-file=bulgy.jpg => bulgy-stereogram.jpg]
+  -p, --pattern-size <PATTERN_SIZE>  Size of repeating dots pattern square (in pixels) [default: 40]
+  -D, --deepness <DEEPNESS>          Pattern distortion to represent depth. [0.1 - 0.9] [default: 0.6]
+  -W, --width <WIDTH>                Width of outer image (in pixels)
+  -H, --height <HEIGHT>              Height of outer image (in pixels)
+  -h, --help                         Print help
+  -V, --version                      Print version
 ```
