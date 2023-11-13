@@ -10,10 +10,10 @@ struct Args {
     /// Image file name that represent depth distribution
     #[arg(short, long, value_names = ["IMAGE_FILENAME"], required = true )]
     depth_file: String,
- 
-    /// Stereogram output image file name
-    #[arg(short, long, value_names = ["OUTPUT_FILENAME"], required = true )]
-    out_image: String,
+
+    /// Stereogram file name [default: --depth-file=bulgy.jpg => bulgy-stereogram.jpg]
+    #[arg(short, long, value_names = ["OUTPUT_FILENAME"])]
+    out_image: Option<String>,
 
     /// Size of repeating dots pattern square (in pixels)
     #[arg(short, long, default_value_t = 40)]
@@ -35,8 +35,8 @@ struct Args {
 fn main() {
     let args: Args = Args::parse();
 
-    let depth_file_path = PathBuf::from( args.depth_file );
-    let depthmap = image::open(depth_file_path)
+    let depth_file_path = PathBuf::from(args.depth_file);
+    let depthmap = image::open(depth_file_path.clone())
         .expect("Unable to open depth map!")
         .to_luma8();
 
@@ -95,8 +95,19 @@ fn main() {
             }
         }
     }
+
+    // Use special lambda in case if --out argument wasn't specified
+    let get_default_output = |in_path: PathBuf| -> String {
+        let in_stem = in_path.file_stem().unwrap().to_str().unwrap();
+        let in_ext = in_path.extension().unwrap().to_str().unwrap();
+        let out_path = in_path.with_file_name(format!("{}-stereogram.{}", in_stem, in_ext));
+        out_path.to_string_lossy().to_string()
+    };
     //Save image
     out_image
-        .save(args.out_image)
+        .save(
+            args.out_image
+                .unwrap_or(get_default_output(depth_file_path)),
+        )
         .expect("Can't save output file");
 }
