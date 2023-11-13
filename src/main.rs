@@ -1,23 +1,45 @@
+use clap::Parser;
 use image::{Rgb, RgbImage};
 use rand::{thread_rng, Rng};
-use std::env;
 
-//Usage: [out width] [out height] [pattern_width] [shift_amplitude] [depthmap] [output name]
+#[derive(clap::Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    /// Image file name that represent depth distribution
+    #[arg(short, long)]
+    depth_source_image_file: String,
+
+    /// Size of repeating dots pattern square (in pixels)
+    #[arg(short, long, default_value_t = 40)]
+    pattern_size: u32,
+
+    /// Distortion to represent depth. 0.1 - flatest, 0.9 - deepest
+    #[arg(short, long, default_value_t = 0.6)]
+    shift_amplitude: f64,
+
+    /// Width of outer image (in pixels)
+    #[arg(short('W'), long)]
+    width: Option<u32>,
+
+    /// Height of outer image (in pixels)
+    #[arg(short('H'), long)]
+    height: Option<u32>,
+
+    /// Stereogram output image file name
+    #[arg(short, long)]
+    out_image_file: String,
+}
+
 fn main() {
-    let args: Vec<String> = env::args().collect();
-    if args.len() != 7 {
-        panic!("Invalid parameters!");
-    }
-    let image_width: u32 = args[1].trim().parse().expect("Invalid image width");
-    let image_height: u32 = args[2].trim().parse().expect("Invalid image height");
-    let pix_width: u32 = args[3].trim().parse().expect("Invalid pattern width");
-    let shift_amplitude: f64 = args[4]
-        .trim()
-        .parse()
-        .expect("Invalid shift shift_amplitude");
-    let depthmap = image::open(args[5].trim())
+    let args: Args = Args::parse();
+
+    let depthmap = image::open(args.depth_source_image_file.trim())
         .expect("Unable to open depth map!")
         .to_luma8();
+    let image_width: u32 = args.width.unwrap_or(depthmap.width());
+    let image_height: u32 = args.height.unwrap_or(depthmap.height());
+    let pix_width: u32 = args.pattern_size;
+    let shift_amplitude: f64 = args.shift_amplitude;
     //Generate random pixels
     let mut src_buf: Vec<Vec<f64>> = vec![vec![0.0; pix_width as usize]; image_height as usize];
     let mut rng = thread_rng();
@@ -53,16 +75,8 @@ fn main() {
                     (src_buf[(r % pix_width) as usize][(c % pix_width) as usize] * 255.) as u8;
                 out_image.put_pixel(c, r, Rgb([intensity, intensity, intensity]));
             } else {
-                let min_width = if out_image.width() < depthmap.width() {
-                    out_image.width()
-                } else {
-                    depthmap.width()
-                };
-                let min_height = if out_image.height() < depthmap.height() {
-                    out_image.height()
-                } else {
-                    depthmap.height()
-                };
+                let min_width = out_image.width().min(depthmap.width());
+                let min_height = out_image.height().min(depthmap.height());
                 let intensity = (((depthmap.get_pixel(c % min_width, r % min_height))[0] as f64)
                     - darkest)
                     / (brightest - darkest);
@@ -78,5 +92,7 @@ fn main() {
         }
     }
     //Save image
-    out_image.save(args[6].trim()).unwrap();
+    out_image
+        .save(args.out_image_file)
+        .expect("Can't save output file");
 }
